@@ -10,14 +10,7 @@ library gif;
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:http/http.dart';
-
-final Client _sharedHttpClient = Client();
-
-Client get _httpClient {
-  Client client = _sharedHttpClient;
-  return client;
-}
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// How to auto start the gif.
 enum Autostart {
@@ -119,6 +112,19 @@ class Gif extends StatefulWidget {
 
   @override
   State<Gif> createState() => _GifState();
+
+  // static func for preloading a gif from a url
+  static Future<bool> fetchGif(String url) async {
+    if (url.isEmpty) {
+      return false;
+    }
+    // check if it exists in cache
+    // if (DefaultCacheManager().store.memoryCacheContainsKey(url)) {
+    //   return true;
+    // }
+    await DefaultCacheManager().getSingleFile(url);
+    return true;
+  }
 }
 
 ///
@@ -317,14 +323,18 @@ class _GifState extends State<Gif> with SingleTickerProviderStateMixin {
   /// Fetches the single gif frames and saves them into the [GifCache] of [Gif]
   static Future<GifInfo> _fetchFrames(ImageProvider provider) async {
     late final Uint8List bytes;
-
     if (provider is NetworkImage) {
-      final Uri resolved = Uri.base.resolve(provider.url);
-      final Response response = await _httpClient.get(
-        resolved,
+      // final Uri resolved = Uri.base.resolve(provider.url);
+      var file = await DefaultCacheManager().getSingleFile(
+        provider.url,
         headers: provider.headers,
       );
-      bytes = response.bodyBytes;
+      bytes = await file.readAsBytes();
+      // final Response response = await _httpClient.get(
+      //   resolved,
+      //   headers: provider.headers,
+      // );
+      // bytes = response.bodyBytes;
     } else if (provider is AssetImage) {
       AssetBundleImageKey key =
           await provider.obtainKey(const ImageConfiguration());
